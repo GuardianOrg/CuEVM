@@ -223,3 +223,6 @@ An auto generated source code documentation is available at [https://sbip-sg.git
 
 ### Repository Status
 This repository is the original home of CuEVM. Active development will continue on the maintainer's fork: https://github.com/minhhn2910/CuEVM, with occasional syncs back to this repository when possible.
+
+### QF Round Participation 
+https://giveth.io/project/cuevm:-accelerate-evm-execution-on-gpus 
