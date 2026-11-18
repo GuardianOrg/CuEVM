@@ -498,7 +498,7 @@ __device__ int32_t RETURN(const CuEVM::gas_t &gas_limit, CuEVM::gas_t &gas_used,
  * @param[out] return_data The return data.
  */
 __device__ int32_t REVERT(const CuEVM::gas_t &gas_limit, CuEVM::gas_t &gas_used, CuEVM::evm_stack_t &stack,
-                          CuEVM::evm_call_context_t *call_state_ptr) {
+                          CuEVM::evm_call_context_t *call_state_ptr, uint32_t pc) {
     evm_word_t memory_offset, length;
     int32_t error_code = stack.pop(memory_offset);
     error_code |= stack.pop(length);
@@ -516,6 +516,30 @@ __device__ int32_t REVERT(const CuEVM::gas_t &gas_limit, CuEVM::gas_t &gas_used,
     error_code |= CuEVM::gas_cost::has_gas(gas_limit, gas_used);
 
     if (error_code == ERROR_SUCCESS) {
+#ifdef BUILD_GO_LIBRARY
+        // Assertion oracle: Solidity's assert() compiles to a Panic(0x01) revert, i.e. revert data that starts with
+        // the selector 0x4e487b71 followed by a 32-byte panic code. Nothing else in the kernel inspects revert data,
+        // so without this oracle every assert() failure is invisible to the GPU fuzzing path.
+        if (length_ui32 >= 36) {
+            uint8_t panic_buf[36];
+            // peek() (not copy()) is required here: copy() spreads a request across all lanes of a warp, and this
+            // branch is divergent, so a plain read is the only way to get the whole revert payload in one lane.
+            call_state_ptr->memory_ptr->peek(memory_offset_ui32, 36, panic_buf);
+            bool is_panic = panic_buf[0] == 0x4e && panic_buf[1] == 0x48 && panic_buf[2] == 0x7b &&
+                            panic_buf[3] == 0x71;
+            if (is_panic) {
+                bool assert_panic = panic_buf[35] == 0x01;
+                for (int k = 4; assert_panic && k < 35; k++) {
+                    if (panic_buf[k] != 0) {
+                        assert_panic = false;
+                    }
+                }
+                if (assert_panic) {
+                    global_simplified_trace[INSTANCE_GLOBAL_IDX].assertion_oracle(pc, call_state_ptr->to.words[0]);
+                }
+            }
+        }
+#endif
         call_state_ptr->set_parent_return_data(memory_offset_ui32, length_ui32);
         error_code = ERROR_REVERT;
     }

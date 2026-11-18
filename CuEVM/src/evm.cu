@@ -720,7 +720,8 @@ __device__ void evm_t::run(cached_evm_call_context &cached_call_state, bool copy
                 case OP_REVERT:
                     // TODO: fix this
                     error_code = CuEVM::operations::REVERT(cached_call_state.gas_limit, cached_call_state.gas_used,
-                                                           *cached_call_state.stack_ptr, call_state_ptr);
+                                                           *cached_call_state.stack_ptr, call_state_ptr,
+                                                           cached_call_state.pc);
                     break;
 
                 case OP_SELFDESTRUCT:
@@ -742,6 +743,15 @@ __device__ void evm_t::run(cached_evm_call_context &cached_call_state, bool copy
                                                              *cached_call_state.stack_ptr, call_state_ptr, opcode);
                     } else {
                         error_code = CuEVM::operations::INVALID();
+#ifdef BUILD_LIBRARY
+                        // Solidity compiles `assert(false)` and other compile-time-false assertions to the INVALID
+                        // opcode instead of a Panic(0x01) revert, and finish_call is not reached for a failure inside
+                        // the target contract's own frame, so report it here while the pc is still available.
+                        if (error_code == ERROR_INVALID_OPCODE) {
+                            global_simplified_trace[INSTANCE_GLOBAL_IDX].invalid_opcode_oracle(
+                                cached_call_state.pc, call_state_ptr->to.words[0]);
+                        }
+#endif
                         // #ifdef BUILD_GO_LIBRARY
                         //                         global_simplified_trace[INSTANCE_GLOBAL_IDX].record_operation(cached_call_state.pc,
                         //                         opcode);
@@ -833,6 +843,7 @@ __device__ void evm_t::run(cached_evm_call_context &cached_call_state, bool copy
 }
 
 __device__ int32_t evm_t::finish_TRANSACTION(int32_t error_code, bool copy_state_data) {
+#ifdef BUILD_LIBRARY
     // sent the gas value to the block beneficiary
     gas_t gas_value;
     // const evm_word_t *beneficiary = &(global_block_info->coin_base);
@@ -908,6 +919,7 @@ __device__ int32_t evm_t::finish_TRANSACTION(int32_t error_code, bool copy_state
 
     //  call_state_ptr = parent_call_state_ptr;
 
+#endif
 #ifdef EIP_3155
     if (INSTANCE_GLOBAL_IDX == 1) {
         tracer_ptr->finish_transaction(nullptr, call_state_ptr->gas_used, status);

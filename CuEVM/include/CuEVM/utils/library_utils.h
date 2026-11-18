@@ -89,6 +89,7 @@ extern __device__ GPUFeedbackCount* g_gpu_feedback_count;  // counter for intere
 #define BUG_LEAKING_ETHER 0x03
 #define BUG_ARBITRARY_CALL 0x04
 #define BUG_REENTRANCY 0x05
+#define BUG_ASSERTION 0x06
 #define BUG_INTEGER_ADD 0x11
 #define BUG_INTEGER_SUB 0x12
 #define BUG_INTEGER_MUL 0x13
@@ -290,6 +291,10 @@ struct simplified_trace_data {
      * @param[in] pc The program counter.
      */
     __device__ void invalid_opcode_oracle(uint32_t pc);
+    __device__ void invalid_opcode_oracle(uint32_t pc, uint32_t contract_id);
+
+    // assertion_oracle reports a Solidity assert() failure (Panic(0x01) revert) for the given PC and contract.
+    __device__ void assertion_oracle(uint32_t pc, uint32_t contract_id);
 
     /**
      * @brief Add leaking ether oracle.

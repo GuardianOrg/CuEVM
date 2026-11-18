@@ -264,6 +264,41 @@ __device__ int32_t evm_memory_t::copy(uint32_t index, uint32_t length, uint8_t *
     return error_code;
 }
 
+__device__ int32_t evm_memory_t::peek(const uint32_t index, const uint32_t length, uint8_t *out) {
+    if (length == 0 || out == nullptr) {
+        return ERROR_SUCCESS;
+    }
+    int32_t error_code = grow(index + length);
+    if (error_code != ERROR_SUCCESS) {
+        return error_code;
+    }
+
+    uint32_t total_offset = preallocated_base_offset + index;
+    uint8_t *prealloc_src =
+        &memory_pool::preallocated_memory_base[memory_prealloc_size * INSTANCE_GLOBAL_IDX + total_offset];
+
+    if (total_offset + length <= memory_prealloc_size) {
+        memcpy(out, prealloc_src, length);
+        return ERROR_SUCCESS;
+    }
+
+    uint32_t prealloc_bytes = 0;
+    if (total_offset < memory_prealloc_size) {
+        prealloc_bytes = memory_prealloc_size - total_offset;
+        if (prealloc_bytes > length) {
+            prealloc_bytes = length;
+        }
+        memcpy(out, prealloc_src, prealloc_bytes);
+    }
+
+    uint32_t dynamic_bytes = length - prealloc_bytes;
+    if (dynamic_bytes > 0) {
+        uint32_t dynamic_offset = (total_offset + prealloc_bytes) - memory_prealloc_size;
+        memcpy(out + prealloc_bytes, dynamic_data + dynamic_offset, dynamic_bytes);
+    }
+    return ERROR_SUCCESS;
+}
+
 // Helper function moved outside of the class methods.
 // It copies as much as available from 'src' into 'dest' and zero‑pads the rest.
 // If 'src' is nullptr, it simply zeroes the destination.

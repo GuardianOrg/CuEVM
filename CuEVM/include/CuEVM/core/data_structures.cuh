@@ -272,6 +272,17 @@ struct evm_memory_t {
     __device__ int32_t copy(const uint32_t index, const uint32_t length, uint8_t *&data_);
 
     /**
+     * Read memory bytes with a plain memcpy, without the warp-cooperative path used by copy().
+     * copy() distributes the bytes of a request across all active lanes of a warp, so calling it from a divergent
+     * branch (for example a single lane inspecting revert data) returns only the bytes that lane happened to own.
+     * @param[in] index The index of the memory access.
+     * @param[in] length The length of the memory access.
+     * @param[out] out The destination buffer, which must hold `length` bytes.
+     * @return 0 if success, otherwise the error code.
+     */
+    __device__ int32_t peek(const uint32_t index, const uint32_t length, uint8_t *out);
+
+    /**
      * Set the given memory data. Outside available_size is 0.
      * @param[in] data The data to be set.
      * @param[in] index The index of the memory access.

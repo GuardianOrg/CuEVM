@@ -682,6 +682,12 @@ SimplifiedGPUResultC* process_batch_transactions(const uint64_t* blockNumber, co
 #endif
                     ,
                     false);
+                {
+                    cudaError_t le = cudaGetLastError();
+                    if (le != cudaSuccess) {
+                        printf("[DIAG-LAUNCH] grid=%u block=%u instances=%u err=%s\n", num_blocks, (unsigned)INSTANCES_PER_BLOCK, g_num_instances_per_device, cudaGetErrorString(le));
+                    }
+                }
 
                 // Record the stop event but don't synchronize yet (non-blocking)
                 cudaEventRecord(stop_events[i], stream);

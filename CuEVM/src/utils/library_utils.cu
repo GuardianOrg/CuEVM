@@ -389,6 +389,14 @@ __device__ void simplified_trace_data::invalid_opcode_oracle(uint32_t pc) {
     update_bugs(pc << 16 | BUG_INVALID_OPCODE << 8 | (calls[0].receiver_id & 0xFF));
 }
 
+__device__ void simplified_trace_data::invalid_opcode_oracle(uint32_t pc, uint32_t contract_id) {
+    update_bugs(pc << 16 | BUG_INVALID_OPCODE << 8 | (contract_id & 0xFF));
+}
+
+__device__ void simplified_trace_data::assertion_oracle(uint32_t pc, uint32_t contract_id) {
+    update_bugs(pc << 16 | BUG_ASSERTION << 8 | (contract_id & 0xFF));
+}
+
 __device__ void simplified_trace_data::finish_call(uint8_t error_code, uint32_t last_pc, uint32_t _current_account_id) {
     // printf("thread %d finish_call error_code %u last_pc %u, no_calls %u\n", INSTANCE_GLOBAL_IDX, error_code,
     // last_pc,

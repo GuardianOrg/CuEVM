@@ -153,7 +153,7 @@ __device__ int32_t STATICCALL(CuEVM::evm_call_context_t *current_context, CuEVM:
  * @return The error code.
  */
 __device__ int32_t REVERT(const gas_t &gas_limit, gas_t &gas_used, CuEVM::evm_stack_t &stack,
-                          CuEVM::evm_call_context_t *call_state_ptr);
+                          CuEVM::evm_call_context_t *call_state_ptr, uint32_t pc);
 
 /**
  * The INVALID operation.
